@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="es"> 
+ <head> 
+  <meta charset="UTF-8"> 
+  <title>Sorteo Lotería Offline</title> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <style>
+body{
+    margin:0;
+    background:#0b1220;
+    color:white;
+    font-family:Arial, sans-serif;
+}
+.hidden{display:none}
+
+/* LOGIN */
+.login{
+    max-width:320px;
+    margin:70px auto;
+    background:#020617;
+    border:2px solid gold;
+    border-radius:14px;
+    padding:20px;
+}
+.login h2{text-align:center;color:gold}
+.login input{
+    width:100%;
+    padding:10px;
+    margin:8px 0;
+    border-radius:8px;
+    border:none;
+}
+.login button{
+    width:100%;
+    padding:10px;
+    background:gold;
+    border:none;
+    border-radius:8px;
+    font-size:16px;
+    cursor:pointer;
+}
+
+/* INFO USUARIO */
+.info{
+    max-width:900px;
+    margin:10px auto;
+    padding:10px;
+    background:#020617;
+    border:2px solid gold;
+    border-radius:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.info span{
+    font-size:14px;
+}
+.saldo{
+    color:#22c55e;
+    font-weight:bold;
+}
+
+/* VIDEO */
+.video-container{
+    max-width:900px;
+    margin:10px auto;
+}
+video{
+    width:100%;
+    height:260px;
+    border-radius:14px;
+    border:3px solid gold;
+    background:black;
+}
+
+/* CARTONES */
+.cartones{
+    max-width:650px;
+    margin:15px auto;
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+}
+.carton{
+    background:#020617;
+    border:2px solid gold;
+    border-radius:12px;
+    padding:6px;
+}
+.carton h4{text-align:center;color:gold;font-size:14px}
+.numeros{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:5px;
+}
+.num{
+    background:white;
+    color:black;
+    font-size:14px;
+    text-align:center;
+    padding:6px 0;
+    border-radius:6px;
+    font-weight:bold;
+    cursor:pointer;
+}
+.num.activo{background:gold}
+.num.bloqueado{opacity:0.3;pointer-events:none}
+.contador{text-align:center;font-size:12px;margin-top:4px}
+
+.logout{
+    display:block;
+    margin:12px auto;
+    padding:8px 16px;
+    background:#dc2626;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+</style> 
+ </head> 
+ <body> <!-- LOGIN --> 
+  <div class="login" id="login"> 
+   <h2>Ingreso al Sorteo</h2> 
+   <input id="user" placeholder="Usuario"> 
+   <input id="pass" type="password" placeholder="PIN"> <button onclick="login()">Ingresar</button> 
+  </div> <!-- APP --> 
+  <div id="app" class="hidden"> <!-- INFO USUARIO --> 
+   <div class="info"> <span>👤 Usuario: <b id="nombreUsuario"></b></span> <span>💰 Saldo: <span class="saldo" id="saldoUsuario"></span></span> 
+   </div> 
+   <div class="video-container"> 
+    <video id="video" autoplay playsinline></video> 
+   </div> 
+   <div class="cartones" id="cartones"></div> <button class="logout" onclick="logout()">Cerrar sesión</button> 
+  </div> 
+  <script>
+/* =====================================================
+   USUARIO FIJO DE EJEMPLO
+===================================================== */
+let usuarios = {
+    "ignacio":{
+        pass:"12345",
+        saldo: 15000,   // 👈 SALDO INICIAL
+        cartones:{1:[],2:[]}
+    }
+};
+localStorage.setItem("usuarios", JSON.stringify(usuarios));
+
+/* =====================================================
+   LOGIN
+===================================================== */
+function login(){
+    const u = document.getElementById("user").value.trim();
+    const p = document.getElementById("pass").value.trim();
+    let users = JSON.parse(localStorage.getItem("usuarios"));
+
+    if(!users[u]){ alert("Usuario no existe"); return; }
+    if(users[u].pass !== p){ alert("PIN incorrecto"); return; }
+
+    localStorage.setItem("usuarioActivo", u);
+    iniciar(u);
+}
+
+function logout(){
+    localStorage.removeItem("usuarioActivo");
+    location.reload();
+}
+
+function iniciar(u){
+    document.getElementById("login").style.display="none";
+    document.getElementById("app").classList.remove("hidden");
+
+    let users = JSON.parse(localStorage.getItem("usuarios"));
+    document.getElementById("nombreUsuario").innerText = u;
+    document.getElementById("saldoUsuario").innerText = "$" + users[u].saldo;
+
+    iniciarCamara();
+    crearCartones(u);
+}
+
+/* =====================================================
+   CÁMARA REAL
+===================================================== */
+function iniciarCamara(){
+    navigator.mediaDevices.getUserMedia({
+        video:{facingMode:"environment"},
+        audio:false
+    }).then(stream=>{
+        document.getElementById("video").srcObject = stream;
+    }).catch(()=>alert("No se pudo acceder a la cámara"));
+}
+
+/* =====================================================
+   CARTONES
+===================================================== */
+const MAX = 8;
+
+function crearCartones(u){
+    const cont = document.getElementById("cartones");
+    cont.innerHTML="";
+    let users = JSON.parse(localStorage.getItem("usuarios"));
+    let datos = users[u].cartones;
+
+    for(let c=1;c<=2;c++){
+        const carton=document.createElement("div");
+        carton.className="carton";
+        carton.innerHTML=`<h4>Cartón ${c}</h4>`;
+
+        const numeros=document.createElement("div");
+        numeros.className="numeros";
+        const contador=document.createElement("div");
+        contador.className="contador";
+
+        function actualizar(){
+            contador.innerText=`Elegidos ${datos[c].length} / ${MAX}`;
+            numeros.querySelectorAll(".num").forEach(n=>{
+                let v=parseInt(n.innerText);
+                n.classList.toggle("activo", datos[c].includes(v));
+                n.classList.toggle("bloqueado",
+                    !datos[c].includes(v) && datos[c].length>=MAX);
+            });
+            localStorage.setItem("usuarios", JSON.stringify(users));
+        }
+
+        for(let i=1;i<=20;i++){
+            const n=document.createElement("div");
+            n.className="num";
+            n.innerText=i;
+            n.onclick=()=>{
+                if(datos[c].includes(i)){
+                    datos[c]=datos[c].filter(x=>x!==i);
+                }else{
+                    if(datos[c].length>=MAX) return;
+                    datos[c].push(i);
+                }
+                actualizar();
+            };
+            numeros.appendChild(n);
+        }
+
+        actualizar();
+        carton.appendChild(numeros);
+        carton.appendChild(contador);
+        cont.appendChild(carton);
+    }
+}
+</script> 
+ 
+</body></html>
