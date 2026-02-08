@@ -18,7 +18,7 @@ button{background:gold;font-weight:bold;cursor:pointer}
 .num.pendiente{background:orange}
 .num.comprado{background:gold;pointer-events:none}
 .admin{border:2px dashed red}
-video{width:100%;border-radius:14px;border:3px solid gold;background:black}
+iframe{width:100%;height:320px;border-radius:14px;border:3px solid gold;background:black}
 </style>
 </head>
 
@@ -44,7 +44,15 @@ video{width:100%;border-radius:14px;border:3px solid gold;background:black}
 
 <div class="box">
 <h3>📡 Transmisión en vivo</h3>
-<video id="video" autoplay playsinline muted></video>
+
+<!-- 🔴 CAMBIA SOLO EL ID DEL VIDEO -->
+<iframe
+  src="https://www.youtube.com/embed/ABC123XYZ?autoplay=1&mute=1"
+  frameborder="0"
+  allow="autoplay; encrypted-media"
+  allowfullscreen>
+</iframe>
+
 </div>
 
 <div class="box">
@@ -77,7 +85,7 @@ const firebaseConfig = {
 };
 
 const ADMIN_EMAIL = "rifagana2311@gmail.com";
-const ADMIN_PASS  = "Admin123!"; // la MISMA de Firebase Auth
+const ADMIN_PASS  = "Admin123!";
 
 /* ================= INIT ================= */
 const appFB = initializeApp(firebaseConfig);
@@ -118,16 +126,7 @@ function iniciar(){
   userLogin.classList.add("hidden");
   app.classList.remove("hidden");
   if(isAdmin) adminPanel.classList.remove("hidden");
-  iniciarCamara();
   iniciarNumeros();
-}
-
-/* ================= CAMARA (SOLO ADMIN) ================= */
-function iniciarCamara(){
-  if(!isAdmin) return;
-  navigator.mediaDevices.getUserMedia({video:true,audio:false})
-    .then(stream => video.srcObject = stream)
-    .catch(()=>alert("No se pudo acceder a la cámara"));
 }
 
 /* ================= NUMEROS ================= */
@@ -140,7 +139,6 @@ async function iniciarNumeros(){
     for(let i=1;i<=300;i++) base[i] = "libre";
     await setDoc(refNumeros, base);
   }
-
   onSnapshot(refNumeros, s => pintarNumeros(s.data()));
 }
 
