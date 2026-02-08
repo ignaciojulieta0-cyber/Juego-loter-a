@@ -1,8 +1,8 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Rifita en Vivo</title>
+<title>Rifa en Vivo</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -16,88 +16,91 @@ body{
 
 .login{
   max-width:320px;
-  margin:70px auto;
+  margin:60px auto;
   background:#020617;
   border:2px solid gold;
   border-radius:14px;
   padding:20px;
 }
 .login h2{text-align:center;color:gold}
-.login input,.login button{
+.login input, .login button{
   width:100%;
   padding:10px;
   margin:8px 0;
   border-radius:8px;
   border:none;
 }
-.login button{background:gold;font-size:16px}
-
-.info{
-  max-width:900px;
-  margin:10px auto;
-  padding:10px;
-  background:#020617;
-  border:2px solid gold;
-  border-radius:14px;
-  display:flex;
-  justify-content:space-between;
+.login button{
+  background:gold;
+  font-weight:bold;
+  cursor:pointer;
 }
 
-.video-container{
-  max-width:900px;
+.top{
+  max-width:1100px;
+  margin:10px auto;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.video-box{
+  max-width:1100px;
   margin:10px auto;
 }
 video{
   width:100%;
   height:260px;
   background:black;
-  border-radius:14px;
   border:3px solid gold;
+  border-radius:12px;
 }
 
-.numeros-grid{
-  max-width:900px;
+.numeros{
+  max-width:1100px;
   margin:15px auto;
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(50px,1fr));
+  grid-template-columns:repeat(10,1fr);
   gap:6px;
 }
-.numero{
-  padding:10px 0;
-  text-align:center;
-  border-radius:8px;
-  font-weight:bold;
-  cursor:pointer;
-  background:#22c55e;
+.num{
+  background:white;
   color:black;
+  text-align:center;
+  padding:6px 0;
+  border-radius:6px;
+  cursor:pointer;
+  font-weight:bold;
+  font-size:12px;
 }
-.numero.pendiente{background:#facc15}
-.numero.bloqueado{
-  background:#dc2626;
-  color:white;
-  cursor:not-allowed;
+.num.bloqueado{
+  background:#555;
+  color:#ccc;
+  pointer-events:none;
 }
-.numero.mio{background:gold}
 
 .admin-panel{
-  max-width:900px;
+  max-width:1100px;
   margin:15px auto;
   background:#020617;
   border:2px solid gold;
-  border-radius:14px;
+  border-radius:12px;
   padding:10px;
 }
-.admin-panel h3{text-align:center;color:gold}
+.admin-panel h3{color:gold}
 
-button{
-  padding:6px 10px;
-  border-radius:6px;
+button.admin{
+  background:#16a34a;
+  color:white;
   border:none;
+  padding:5px 8px;
+  border-radius:6px;
   cursor:pointer;
+  margin-left:6px;
 }
-.confirmar{background:#22c55e}
-.liberar{background:#dc2626;color:white}
-.logout{background:#dc2626;color:white;margin:10px auto;display:block}
+button.liberar{
+  background:#dc2626;
+}
 </style>
 </head>
 
@@ -105,42 +108,177 @@ button{
 
 <!-- LOGIN -->
 <div class="login" id="login">
-  <h2>Ingreso Rifita</h2>
-  <input id="user" placeholder="Usuario">
-  <input id="pass" type="password" placeholder="PIN">
-  <button id="btnLogin">Ingresar</button>
+  <h2>Ingreso</h2>
+  <input id="email" placeholder="Correo">
+  <input id="pass" type="password" placeholder="Contraseña">
+  <button onclick="login()">Ingresar</button>
 </div>
 
 <!-- APP -->
 <div id="app" class="hidden">
 
-  <div class="info">
-    <span>👤 <b id="nombre"></b></span>
-    <span>💰 Saldo: $<b id="saldo"></b></span>
-    <span>Rol: <b id="rolTxt"></b></span>
+  <div class="top">
+    <div>👤 <b id="usuario"></b></div>
+    <button onclick="logout()">Salir</button>
   </div>
 
-  <div class="video-container">
+  <!-- VIDEO ADMIN -->
+  <div class="video-box hidden" id="videoBox">
     <video id="video" autoplay playsinline></video>
   </div>
 
-  <div id="numerosGrid" class="numeros-grid"></div>
+  <!-- NUMEROS -->
+  <div class="numeros" id="numeros"></div>
 
   <!-- PANEL ADMIN -->
-  <div id="adminPanel" class="admin-panel hidden">
-    <h3>Pendientes de Confirmación</h3>
-    <div id="pendientes"></div>
+  <div class="admin-panel hidden" id="adminPanel">
+    <h3>Compras pendientes</h3>
+    <div id="compras"></div>
   </div>
 
-  <button class="logout" onclick="location.reload()">Cerrar sesión</button>
 </div>
 
 <script type="module">
-/* =========================
-   FIREBASE v12
-========================= */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import {
-  getDatabase, ref, set, update, remove,
-  onValue, get, child, push
-} from "https://www.gstatic.com/firebasejs/
+import { 
+  getAuth, signInWithEmailAndPassword, signOut 
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { 
+  getFirestore, doc, setDoc, updateDoc, getDoc,
+  onSnapshot, collection, query, where, deleteField
+} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
+/* 🔐 CONFIGURACIÓN */
+const ADMIN_EMAIL = "rifagana2311@gmail.com";
+const PRECIO_NUMERO = 1000;
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBm2cOpwT87SExFelGUldPXgelQCB_0AYo",
+  authDomain: "rifita-en-vivo.firebaseapp.com",
+  projectId: "rifita-en-vivo",
+  storageBucket: "rifita-en-vivo.firebasestorage.app",
+  messagingSenderId: "974961349682",
+  appId: "1:974961349682:web:4c3aa3441220ec735a982b"
+};
+
+const appFB = initializeApp(firebaseConfig);
+const auth = getAuth(appFB);
+const db = getFirestore(appFB);
+
+const numerosRef = doc(db,"numeros","estado");
+const comprasRef = collection(db,"compras");
+
+/* LOGIN */
+window.login = function(){
+  signInWithEmailAndPassword(auth,email.value.trim(),pass.value.trim())
+    .then(cred=>iniciar(cred.user))
+    .catch(()=>alert("Credenciales incorrectas"));
+};
+
+function iniciar(user){
+  login.classList.add("hidden");
+  app.classList.remove("hidden");
+  usuario.innerText = user.email;
+
+  crearNumeros();
+  escucharNumeros();
+
+  if(user.email === ADMIN_EMAIL){
+    videoBox.classList.remove("hidden");
+    adminPanel.classList.remove("hidden");
+    iniciarCamara();
+    escucharComprasAdmin();
+  }
+}
+
+/* LOGOUT */
+window.logout = function(){
+  signOut(auth).then(()=>location.reload());
+};
+
+/* CÁMARA ADMIN */
+function iniciarCamara(){
+  navigator.mediaDevices.getUserMedia({video:true})
+    .then(stream=>video.srcObject=stream)
+    .catch(()=>alert("No se pudo acceder a la cámara"));
+}
+
+/* CREAR NUMEROS */
+function crearNumeros(){
+  numeros.innerHTML="";
+  for(let i=1;i<=300;i++){
+    const d=document.createElement("div");
+    d.className="num";
+    d.innerText=i;
+    d.dataset.n=i;
+    d.onclick=()=>comprarNumero(i);
+    numeros.appendChild(d);
+  }
+}
+
+/* ESCUCHAR BLOQUEOS */
+function escucharNumeros(){
+  onSnapshot(numerosRef,snap=>{
+    if(!snap.exists()) return;
+    const vendidos=snap.data().vendidos||{};
+    document.querySelectorAll(".num").forEach(el=>{
+      el.classList.toggle("bloqueado",vendidos[el.dataset.n]);
+    });
+  });
+}
+
+/* COMPRAR NUMERO */
+async function comprarNumero(n){
+  const u=auth.currentUser;
+  if(!u) return;
+
+  await setDoc(doc(db,"compras",`${u.uid}_${n}`),{
+    numero:n,
+    uid:u.uid,
+    email:u.email,
+    estado:"pendiente",
+    fecha:Date.now()
+  });
+  alert("Compra enviada, espera confirmación");
+}
+
+/* ADMIN: ESCUCHAR COMPRAS */
+function escucharComprasAdmin(){
+  const q=query(comprasRef,where("estado","==","pendiente"));
+  onSnapshot(q,snap=>{
+    compras.innerHTML="";
+    snap.forEach(d=>{
+      const c=d.data();
+      const div=document.createElement("div");
+      div.innerHTML=`
+        Nº <b>${c.numero}</b> — ${c.email}
+        <button class="admin" onclick="confirmarCompra('${d.id}','${c.uid}',${c.numero})">Confirmar</button>
+        <button class="admin liberar" onclick="liberarNumero(${c.numero})">Liberar</button>
+      `;
+      compras.appendChild(div);
+    });
+  });
+}
+
+/* CONFIRMAR COMPRA */
+window.confirmarCompra = async function(docId,uid,numero){
+  await updateDoc(numerosRef,{[`vendidos.${numero}`]:uid});
+  await updateDoc(doc(db,"compras",docId),{estado:"confirmada"});
+
+  const uRef=doc(db,"usuarios",uid);
+  const snap=await getDoc(uRef);
+  if(snap.exists()){
+    await updateDoc(uRef,{
+      saldo:(snap.data().saldo||0)-PRECIO_NUMERO
+    });
+  }
+};
+
+/* LIBERAR NUMERO */
+window.liberarNumero = async function(numero){
+  await updateDoc(numerosRef,{[`vendidos.${numero}`]:deleteField()});
+};
+</script>
+
+</body>
+</html>
