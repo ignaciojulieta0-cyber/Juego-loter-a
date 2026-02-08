@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -6,152 +6,67 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{
-  margin:0;
-  background:#0b1220;
-  color:white;
-  font-family:Arial, sans-serif;
-}
+body{margin:0;background:#0b1220;color:white;font-family:Arial}
 .hidden{display:none}
-
-.login{
-  max-width:320px;
-  margin:60px auto;
-  background:#020617;
-  border:2px solid gold;
-  border-radius:14px;
-  padding:20px;
-}
-.login h2{text-align:center;color:gold}
-.login input, .login button{
-  width:100%;
-  padding:10px;
-  margin:8px 0;
-  border-radius:8px;
-  border:none;
-}
-.login button{
-  background:gold;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-.top{
-  max-width:1100px;
-  margin:10px auto;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.video-box{
-  max-width:1100px;
-  margin:10px auto;
-}
-video{
-  width:100%;
-  height:260px;
-  background:black;
-  border:3px solid gold;
-  border-radius:12px;
-}
-
-.numeros{
-  max-width:1100px;
-  margin:15px auto;
-  display:grid;
-  grid-template-columns:repeat(10,1fr);
-  gap:6px;
-}
-.num{
-  background:white;
-  color:black;
-  text-align:center;
-  padding:6px 0;
-  border-radius:6px;
-  cursor:pointer;
-  font-weight:bold;
-  font-size:12px;
-}
-.num.bloqueado{
-  background:#555;
-  color:#ccc;
-  pointer-events:none;
-}
-
-.admin-panel{
-  max-width:1100px;
-  margin:15px auto;
-  background:#020617;
-  border:2px solid gold;
-  border-radius:12px;
-  padding:10px;
-}
-.admin-panel h3{color:gold}
-
-button.admin{
-  background:#16a34a;
-  color:white;
-  border:none;
-  padding:5px 8px;
-  border-radius:6px;
-  cursor:pointer;
-  margin-left:6px;
-}
-button.liberar{
-  background:#dc2626;
-}
+.box{background:#020617;border:2px solid gold;border-radius:14px;padding:16px;margin:12px auto;max-width:900px}
+h2,h3{text-align:center;color:gold}
+input,button{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:none}
+button{background:gold;font-weight:bold;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(55px,1fr));gap:6px}
+.num{background:white;color:black;text-align:center;padding:10px;border-radius:6px;font-weight:bold;cursor:pointer}
+.num.libre{background:white}
+.num.pendiente{background:orange}
+.num.comprado{background:gold;pointer-events:none}
+.admin{border:2px dashed red}
+video{width:100%;border-radius:14px;border:3px solid gold;background:black}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
-<div class="login" id="login">
-  <h2>Ingreso</h2>
-  <input id="email" placeholder="Correo">
-  <input id="pass" type="password" placeholder="Contraseña">
-  <button onclick="login()">Ingresar</button>
+<!-- LOGIN ADMIN -->
+<div class="box" id="adminLogin">
+<h2>🔐 Admin</h2>
+<input id="adminUser" placeholder="Usuario">
+<input id="adminPin" type="password" placeholder="PIN">
+<button onclick="loginAdmin()">Ingresar</button>
+</div>
+
+<!-- LOGIN USUARIO -->
+<div class="box hidden" id="userLogin">
+<h2>👤 Usuario</h2>
+<input id="userName" placeholder="Tu nombre">
+<button onclick="loginUser()">Ingresar</button>
 </div>
 
 <!-- APP -->
 <div id="app" class="hidden">
 
-  <div class="top">
-    <div>👤 <b id="usuario"></b></div>
-    <button onclick="logout()">Salir</button>
-  </div>
+<div class="box">
+<h3>📡 Transmisión en vivo</h3>
+<video id="video" autoplay playsinline muted></video>
+</div>
 
-  <!-- VIDEO ADMIN -->
-  <div class="video-box hidden" id="videoBox">
-    <video id="video" autoplay playsinline></video>
-  </div>
+<div class="box">
+<h3>🎟️ Números (1 al 300)</h3>
+<div class="grid" id="numeros"></div>
+</div>
 
-  <!-- NUMEROS -->
-  <div class="numeros" id="numeros"></div>
-
-  <!-- PANEL ADMIN -->
-  <div class="admin-panel hidden" id="adminPanel">
-    <h3>Compras pendientes</h3>
-    <div id="compras"></div>
-  </div>
+<div class="box admin hidden" id="adminPanel">
+<h3>🛠️ Panel Admin</h3>
+<button onclick="confirmarCompras()">Confirmar compras</button>
+<button onclick="liberarTodo()">Liberar todos</button>
+</div>
 
 </div>
 
+<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { 
-  getAuth, signInWithEmailAndPassword, signOut 
-} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { 
-  getFirestore, doc, setDoc, updateDoc, getDoc,
-  onSnapshot, collection, query, where, deleteField
-} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 
-/* 🔐 CONFIGURACIÓN */
-const ADMIN_EMAIL = "rifagana2311@gmail.com";
-const PRECIO_NUMERO = 1000;
-
+/* ================= CONFIG ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBm2cOpwT87SExFelGUldPXgelQCB_0AYo",
   authDomain: "rifita-en-vivo.firebaseapp.com",
@@ -161,122 +76,103 @@ const firebaseConfig = {
   appId: "1:974961349682:web:4c3aa3441220ec735a982b"
 };
 
+const ADMIN_EMAIL = "rifagana2311@gmail.com";
+const ADMIN_PASS  = "Admin123!"; // la MISMA de Firebase Auth
+
+/* ================= INIT ================= */
 const appFB = initializeApp(firebaseConfig);
-const auth = getAuth(appFB);
 const db = getFirestore(appFB);
+const auth = getAuth(appFB);
 
-const numerosRef = doc(db,"numeros","estado");
-const comprasRef = collection(db,"compras");
+let isAdmin = false;
+let usuario = "";
 
-/* LOGIN */
-window.login = function(){
-  signInWithEmailAndPassword(auth,email.value.trim(),pass.value.trim())
-    .then(cred=>iniciar(cred.user))
-    .catch(()=>alert("Credenciales incorrectas"));
+/* ================= ADMIN LOGIN ================= */
+window.loginAdmin = async ()=>{
+  const u = adminUser.value.trim();
+  const p = adminPin.value.trim();
+
+  const snap = await getDoc(doc(db,"admin","principal"));
+  if(!snap.exists()) return alert("Admin no configurado");
+
+  const d = snap.data();
+  if(u === d.usuario && p === d.pin){
+    await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASS);
+    isAdmin = true;
+    iniciar();
+  } else {
+    alert("PIN incorrecto");
+  }
 };
 
-function iniciar(user){
-  login.classList.add("hidden");
+/* ================= USER LOGIN ================= */
+window.loginUser = ()=>{
+  usuario = userName.value.trim();
+  if(!usuario) return;
+  iniciar();
+};
+
+/* ================= INICIAR ================= */
+function iniciar(){
+  adminLogin.classList.add("hidden");
+  userLogin.classList.add("hidden");
   app.classList.remove("hidden");
-  usuario.innerText = user.email;
-
-  crearNumeros();
-  escucharNumeros();
-
-  if(user.email === ADMIN_EMAIL){
-    videoBox.classList.remove("hidden");
-    adminPanel.classList.remove("hidden");
-    iniciarCamara();
-    escucharComprasAdmin();
-  }
+  if(isAdmin) adminPanel.classList.remove("hidden");
+  iniciarCamara();
+  iniciarNumeros();
 }
 
-/* LOGOUT */
-window.logout = function(){
-  signOut(auth).then(()=>location.reload());
-};
-
-/* CÁMARA ADMIN */
+/* ================= CAMARA (SOLO ADMIN) ================= */
 function iniciarCamara(){
-  navigator.mediaDevices.getUserMedia({video:true})
-    .then(stream=>video.srcObject=stream)
+  if(!isAdmin) return;
+  navigator.mediaDevices.getUserMedia({video:true,audio:false})
+    .then(stream => video.srcObject = stream)
     .catch(()=>alert("No se pudo acceder a la cámara"));
 }
 
-/* CREAR NUMEROS */
-function crearNumeros(){
+/* ================= NUMEROS ================= */
+const refNumeros = doc(db,"rifa","numeros");
+
+async function iniciarNumeros(){
+  const snap = await getDoc(refNumeros);
+  if(!snap.exists()){
+    let base = {};
+    for(let i=1;i<=300;i++) base[i] = "libre";
+    await setDoc(refNumeros, base);
+  }
+
+  onSnapshot(refNumeros, s => pintarNumeros(s.data()));
+}
+
+function pintarNumeros(data){
   numeros.innerHTML="";
   for(let i=1;i<=300;i++){
-    const d=document.createElement("div");
-    d.className="num";
-    d.innerText=i;
-    d.dataset.n=i;
-    d.onclick=()=>comprarNumero(i);
+    const d = document.createElement("div");
+    d.className = "num " + data[i];
+    d.innerText = i;
+    d.onclick = ()=>comprarNumero(i,data[i]);
     numeros.appendChild(d);
   }
 }
 
-/* ESCUCHAR BLOQUEOS */
-function escucharNumeros(){
-  onSnapshot(numerosRef,snap=>{
-    if(!snap.exists()) return;
-    const vendidos=snap.data().vendidos||{};
-    document.querySelectorAll(".num").forEach(el=>{
-      el.classList.toggle("bloqueado",vendidos[el.dataset.n]);
-    });
-  });
+async function comprarNumero(n,estado){
+  if(isAdmin) return;
+  if(estado !== "libre") return;
+  await updateDoc(refNumeros,{[n]:"pendiente"});
 }
 
-/* COMPRAR NUMERO */
-async function comprarNumero(n){
-  const u=auth.currentUser;
-  if(!u) return;
-
-  await setDoc(doc(db,"compras",`${u.uid}_${n}`),{
-    numero:n,
-    uid:u.uid,
-    email:u.email,
-    estado:"pendiente",
-    fecha:Date.now()
-  });
-  alert("Compra enviada, espera confirmación");
-}
-
-/* ADMIN: ESCUCHAR COMPRAS */
-function escucharComprasAdmin(){
-  const q=query(comprasRef,where("estado","==","pendiente"));
-  onSnapshot(q,snap=>{
-    compras.innerHTML="";
-    snap.forEach(d=>{
-      const c=d.data();
-      const div=document.createElement("div");
-      div.innerHTML=`
-        Nº <b>${c.numero}</b> — ${c.email}
-        <button class="admin" onclick="confirmarCompra('${d.id}','${c.uid}',${c.numero})">Confirmar</button>
-        <button class="admin liberar" onclick="liberarNumero(${c.numero})">Liberar</button>
-      `;
-      compras.appendChild(div);
-    });
-  });
-}
-
-/* CONFIRMAR COMPRA */
-window.confirmarCompra = async function(docId,uid,numero){
-  await updateDoc(numerosRef,{[`vendidos.${numero}`]:uid});
-  await updateDoc(doc(db,"compras",docId),{estado:"confirmada"});
-
-  const uRef=doc(db,"usuarios",uid);
-  const snap=await getDoc(uRef);
-  if(snap.exists()){
-    await updateDoc(uRef,{
-      saldo:(snap.data().saldo||0)-PRECIO_NUMERO
-    });
-  }
+/* ================= ADMIN ================= */
+window.confirmarCompras = async ()=>{
+  const snap = await getDoc(refNumeros);
+  let d = snap.data();
+  for(let k in d) if(d[k]==="pendiente") d[k]="comprado";
+  await setDoc(refNumeros,d);
 };
 
-/* LIBERAR NUMERO */
-window.liberarNumero = async function(numero){
-  await updateDoc(numerosRef,{[`vendidos.${numero}`]:deleteField()});
+window.liberarTodo = async ()=>{
+  let d = {};
+  for(let i=1;i<=300;i++) d[i]="libre";
+  await setDoc(refNumeros,d);
 };
 </script>
 
