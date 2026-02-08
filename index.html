@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Sorteo en Vivo</title>
+<title>Rifita en Vivo</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -10,7 +10,7 @@ body{
   margin:0;
   background:#0b1220;
   color:white;
-  font-family:Arial,sans-serif;
+  font-family:Arial, sans-serif;
 }
 .hidden{display:none}
 
@@ -30,7 +30,7 @@ body{
   border-radius:8px;
   border:none;
 }
-.login button{background:gold;font-size:16px;cursor:pointer}
+.login button{background:gold;font-size:16px}
 
 .info{
   max-width:900px;
@@ -105,10 +105,10 @@ button{
 
 <!-- LOGIN -->
 <div class="login" id="login">
-  <h2>Ingreso Sorteo</h2>
+  <h2>Ingreso Rifita</h2>
   <input id="user" placeholder="Usuario">
   <input id="pass" type="password" placeholder="PIN">
-  <button onclick="login()">Ingresar</button>
+  <button id="btnLogin">Ingresar</button>
 </div>
 
 <!-- APP -->
@@ -128,214 +128,19 @@ button{
 
   <!-- PANEL ADMIN -->
   <div id="adminPanel" class="admin-panel hidden">
-    <h3>Panel Administrador</h3>
+    <h3>Pendientes de Confirmación</h3>
     <div id="pendientes"></div>
   </div>
 
   <button class="logout" onclick="location.reload()">Cerrar sesión</button>
 </div>
 
-<!-- FIREBASE -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
-<script>
-// 🔥 CONFIG FIREBASE
-firebase.initializeApp({
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_DOMINIO",
-  databaseURL: "TU_DATABASE_URL",
-  projectId: "TU_PROJECT_ID"
-});
-const db = firebase.database();
-
-/* ======================
-   CONFIGURACIÓN
-====================== */
-const PRECIO = 1000;
-const TOTAL_NUMEROS = 300;
-
-/* ======================
-   USUARIOS
-====================== */
-const usuarios = {
-  ignacio:{ pass:"12345", rol:"admin", saldo:15000 },
-  juan:{ pass:"1111", rol:"user", saldo:5000 }
-};
-
-let usuarioActivo, rol;
-const numerosRef = db.ref("numeros");
-
-/* ======================
-   LOGIN
-====================== */
-function login(){
-  const u = user.value.trim();
-  const p = pass.value.trim();
-
-  if(!usuarios[u] || usuarios[u].pass!==p){
-    alert("Credenciales incorrectas");
-    return;
-  }
-
-  usuarioActivo = u;
-  rol = usuarios[u].rol;
-
-  login.style.display="none";
-  app.classList.remove("hidden");
-
-  nombre.innerText = u;
-  saldo.innerText = usuarios[u].saldo;
-  rolTxt.innerText = rol;
-
-  crearNumeros();
-  escucharNumeros();
-
-  if(rol==="admin"){
-    adminPanel.classList.remove("hidden");
-    iniciarAdminCamara();
-  }else{
-    iniciarUsuarioCamara();
-  }
-}
-
-/* ======================
-   VIDEO WEBRTC
-====================== */
-let pc;
-const sala="sorteo";
-
-function crearPC(){
-  pc = new RTCPeerConnection({
-    iceServers:[{urls:"stun:stun.l.google.com:19302"}]
-  });
-
-  pc.ontrack = e=>video.srcObject=e.streams[0];
-  pc.onicecandidate = e=>{
-    if(e.candidate){
-      db.ref("ice").push(JSON.stringify(e.candidate));
-    }
-  };
-}
-
-async function iniciarAdminCamara(){
-  crearPC();
-  const stream = await navigator.mediaDevices.getUserMedia({video:true});
-  video.srcObject = stream;
-  stream.getTracks().forEach(t=>pc.addTrack(t,stream));
-
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  db.ref("offer").set(JSON.stringify(offer));
-
-  db.ref("answer").on("value", s=>{
-    if(s.exists()) pc.setRemoteDescription(JSON.parse(s.val()));
-  });
-
-  db.ref("ice").on("child_added", s=>{
-    pc.addIceCandidate(JSON.parse(s.val()));
-  });
-}
-
-function iniciarUsuarioCamara(){
-  crearPC();
-  db.ref("offer").on("value", async s=>{
-    if(!s.exists()) return;
-    await pc.setRemoteDescription(JSON.parse(s.val()));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    db.ref("answer").set(JSON.stringify(answer));
-  });
-
-  db.ref("ice").on("child_added", s=>{
-    pc.addIceCandidate(JSON.parse(s.val()));
-  });
-}
-
-/* ======================
-   NUMEROS
-====================== */
-function crearNumeros(){
-  numerosGrid.innerHTML="";
-  for(let i=1;i<=TOTAL_NUMEROS;i++){
-    const d=document.createElement("div");
-    d.className="numero";
-    d.innerText=i.toString().padStart(3,"0");
-    d.onclick=()=>comprarNumero(i);
-    numerosGrid.appendChild(d);
-  }
-}
-
-function comprarNumero(n){
-  if(rol==="admin") return;
-
-  numerosRef.child(n).once("value", s=>{
-    if(s.exists()) return alert("Número no disponible");
-    if(usuarios[usuarioActivo].saldo<PRECIO) return alert("Saldo insuficiente");
-
-    usuarios[usuarioActivo].saldo-=PRECIO;
-    saldo.innerText=usuarios[usuarioActivo].saldo;
-
-    numerosRef.child(n).set({
-      usuario:usuarioActivo,
-      estado:"pendiente",
-      fecha:Date.now()
-    });
-  });
-}
-
-function escucharNumeros(){
-  numerosRef.on("value", snap=>{
-    document.querySelectorAll(".numero").forEach(div=>{
-      const n=parseInt(div.innerText);
-      const d=snap.child(n).val();
-      div.className="numero";
-      if(!d) return;
-
-      if(d.estado==="pendiente") div.classList.add("pendiente");
-      if(d.estado==="confirmado"){
-        div.classList.add("bloqueado");
-        if(d.usuario===usuarioActivo) div.classList.add("mio");
-      }
-    });
-
-    if(rol==="admin") cargarPendientes(snap);
-  });
-}
-
-/* ======================
-   PANEL ADMIN
-====================== */
-function cargarPendientes(snap){
-  pendientes.innerHTML="";
-  snap.forEach(c=>{
-    const d=c.val();
-    if(d.estado==="pendiente"){
-      const div=document.createElement("div");
-      div.innerHTML=`
-        Nº ${c.key} - ${d.usuario}
-        <button class="confirmar" onclick="confirmar(${c.key})">Confirmar</button>
-        <button class="liberar" onclick="liberar(${c.key})">Liberar</button>
-      `;
-      pendientes.appendChild(div);
-    }
-  });
-}
-
-function confirmar(n){
-  numerosRef.child(n).update({estado:"confirmado"});
-}
-
-function liberar(n){
-  numerosRef.child(n).once("value", s=>{
-    if(!s.exists()) return;
-    const u=s.val().usuario;
-    usuarios[u].saldo+=PRECIO;
-    if(u===usuarioActivo) saldo.innerText=usuarios[u].saldo;
-    numerosRef.child(n).remove();
-  });
-}
-</script>
-
-</body>
-   </html>
+<script type="module">
+/* =========================
+   FIREBASE v12
+========================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import {
+  getDatabase, ref, set, update, remove,
+  onValue, get, child, push
+} from "https://www.gstatic.com/firebasejs/
