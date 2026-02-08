@@ -29,14 +29,14 @@ iframe{width:100%;height:320px;border-radius:14px;border:3px solid gold;backgrou
 <h2>🔐 Admin</h2>
 <input id="adminUser" placeholder="Usuario">
 <input id="adminPin" type="password" placeholder="PIN">
-<button onclick="loginAdmin()">Ingresar</button>
+<button id="btnAdmin">Ingresar</button>
 </div>
 
 <!-- LOGIN USUARIO -->
 <div class="box hidden" id="userLogin">
 <h2>👤 Usuario</h2>
 <input id="userName" placeholder="Tu nombre">
-<button onclick="loginUser()">Ingresar</button>
+<button id="btnUser">Ingresar</button>
 </div>
 
 <!-- APP -->
@@ -44,15 +44,11 @@ iframe{width:100%;height:320px;border-radius:14px;border:3px solid gold;backgrou
 
 <div class="box">
 <h3>📡 Transmisión en vivo</h3>
-
-<!-- 🔴 CAMBIA SOLO EL ID DEL VIDEO -->
 <iframe
   src="https://www.youtube.com/embed/ABC123XYZ?autoplay=1&mute=1"
-  frameborder="0"
   allow="autoplay; encrypted-media"
   allowfullscreen>
 </iframe>
-
 </div>
 
 <div class="box">
@@ -62,8 +58,8 @@ iframe{width:100%;height:320px;border-radius:14px;border:3px solid gold;backgrou
 
 <div class="box admin hidden" id="adminPanel">
 <h3>🛠️ Panel Admin</h3>
-<button onclick="confirmarCompras()">Confirmar compras</button>
-<button onclick="liberarTodo()">Liberar todos</button>
+<button id="btnConfirmar">Confirmar compras</button>
+<button id="btnLiberar">Liberar todos</button>
 </div>
 
 </div>
@@ -95,36 +91,68 @@ const auth = getAuth(appFB);
 let isAdmin = false;
 let usuario = "";
 
-/* ================= ADMIN LOGIN ================= */
-window.loginAdmin = async ()=>{
-  const u = adminUser.value.trim();
-  const p = adminPin.value.trim();
+/* ================= ELEMENTOS ================= */
+const adminLogin = document.getElementById("adminLogin");
+const userLogin  = document.getElementById("userLogin");
+const appDiv     = document.getElementById("app");
+const adminPanel = document.getElementById("adminPanel");
+const numerosDiv = document.getElementById("numeros");
 
-  const snap = await getDoc(doc(db,"admin","principal"));
-  if(!snap.exists()) return alert("Admin no configurado");
+/* ================= EVENTOS ================= */
+document.getElementById("btnAdmin").onclick = loginAdmin;
+document.getElementById("btnUser").onclick  = loginUser;
+document.getElementById("btnConfirmar").onclick = confirmarCompras;
+document.getElementById("btnLiberar").onclick   = liberarTodo;
 
-  const d = snap.data();
-  if(u === d.usuario && p === d.pin){
+/* ================= LOGIN ADMIN ================= */
+async function loginAdmin(){
+  try{
+    const u = document.getElementById("adminUser").value.trim();
+    const p = document.getElementById("adminPin").value.trim();
+
+    if(!u || !p){
+      alert("Completa usuario y PIN");
+      return;
+    }
+
+    const snap = await getDoc(doc(db,"admin","principal"));
+    if(!snap.exists()){
+      alert("No existe admin/principal en Firestore");
+      return;
+    }
+
+    const d = snap.data();
+    if(u !== d.usuario || p !== d.pin){
+      alert("Usuario o PIN incorrecto");
+      return;
+    }
+
     await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASS);
+
     isAdmin = true;
     iniciar();
-  } else {
-    alert("PIN incorrecto");
-  }
-};
 
-/* ================= USER LOGIN ================= */
-window.loginUser = ()=>{
-  usuario = userName.value.trim();
-  if(!usuario) return;
+  }catch(err){
+    alert("ERROR: " + err.message);
+  }
+}
+
+/* ================= LOGIN USUARIO ================= */
+function loginUser(){
+  const nombre = document.getElementById("userName").value.trim();
+  if(!nombre){
+    alert("Ingresa tu nombre");
+    return;
+  }
+  usuario = nombre;
   iniciar();
-};
+}
 
 /* ================= INICIAR ================= */
 function iniciar(){
   adminLogin.classList.add("hidden");
   userLogin.classList.add("hidden");
-  app.classList.remove("hidden");
+  appDiv.classList.remove("hidden");
   if(isAdmin) adminPanel.classList.remove("hidden");
   iniciarNumeros();
 }
@@ -143,13 +171,13 @@ async function iniciarNumeros(){
 }
 
 function pintarNumeros(data){
-  numeros.innerHTML="";
+  numerosDiv.innerHTML="";
   for(let i=1;i<=300;i++){
     const d = document.createElement("div");
     d.className = "num " + data[i];
-    d.innerText = i;
+    d.textContent = i;
     d.onclick = ()=>comprarNumero(i,data[i]);
-    numeros.appendChild(d);
+    numerosDiv.appendChild(d);
   }
 }
 
@@ -160,18 +188,18 @@ async function comprarNumero(n,estado){
 }
 
 /* ================= ADMIN ================= */
-window.confirmarCompras = async ()=>{
+async function confirmarCompras(){
   const snap = await getDoc(refNumeros);
   let d = snap.data();
   for(let k in d) if(d[k]==="pendiente") d[k]="comprado";
   await setDoc(refNumeros,d);
-};
+}
 
-window.liberarTodo = async ()=>{
+async function liberarTodo(){
   let d = {};
   for(let i=1;i<=300;i++) d[i]="libre";
   await setDoc(refNumeros,d);
-};
+}
 </script>
 
 </body>
