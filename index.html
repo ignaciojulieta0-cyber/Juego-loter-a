@@ -1,249 +1,341 @@
 <!doctype html>
-<html lang="es"> 
- <head> 
-  <meta charset="UTF-8"> 
-  <title>Sorteo Lotería Offline</title> 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-  <style>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sorteo en Vivo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
 body{
-    margin:0;
-    background:#0b1220;
-    color:white;
-    font-family:Arial, sans-serif;
+  margin:0;
+  background:#0b1220;
+  color:white;
+  font-family:Arial,sans-serif;
 }
 .hidden{display:none}
 
-/* LOGIN */
 .login{
-    max-width:320px;
-    margin:70px auto;
-    background:#020617;
-    border:2px solid gold;
-    border-radius:14px;
-    padding:20px;
+  max-width:320px;
+  margin:70px auto;
+  background:#020617;
+  border:2px solid gold;
+  border-radius:14px;
+  padding:20px;
 }
 .login h2{text-align:center;color:gold}
-.login input{
-    width:100%;
-    padding:10px;
-    margin:8px 0;
-    border-radius:8px;
-    border:none;
+.login input,.login button{
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+  border-radius:8px;
+  border:none;
 }
-.login button{
-    width:100%;
-    padding:10px;
-    background:gold;
-    border:none;
-    border-radius:8px;
-    font-size:16px;
-    cursor:pointer;
-}
+.login button{background:gold;font-size:16px;cursor:pointer}
 
-/* INFO USUARIO */
 .info{
-    max-width:900px;
-    margin:10px auto;
-    padding:10px;
-    background:#020617;
-    border:2px solid gold;
-    border-radius:14px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-.info span{
-    font-size:14px;
-}
-.saldo{
-    color:#22c55e;
-    font-weight:bold;
+  max-width:900px;
+  margin:10px auto;
+  padding:10px;
+  background:#020617;
+  border:2px solid gold;
+  border-radius:14px;
+  display:flex;
+  justify-content:space-between;
 }
 
-/* VIDEO */
 .video-container{
-    max-width:900px;
-    margin:10px auto;
+  max-width:900px;
+  margin:10px auto;
 }
 video{
-    width:100%;
-    height:260px;
-    border-radius:14px;
-    border:3px solid gold;
-    background:black;
+  width:100%;
+  height:260px;
+  background:black;
+  border-radius:14px;
+  border:3px solid gold;
 }
 
-/* CARTONES */
-.cartones{
-    max-width:650px;
-    margin:15px auto;
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:12px;
+.numeros-grid{
+  max-width:900px;
+  margin:15px auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(50px,1fr));
+  gap:6px;
 }
-.carton{
-    background:#020617;
-    border:2px solid gold;
-    border-radius:12px;
-    padding:6px;
+.numero{
+  padding:10px 0;
+  text-align:center;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+  background:#22c55e;
+  color:black;
 }
-.carton h4{text-align:center;color:gold;font-size:14px}
-.numeros{
-    display:grid;
-    grid-template-columns:repeat(5,1fr);
-    gap:5px;
+.numero.pendiente{background:#facc15}
+.numero.bloqueado{
+  background:#dc2626;
+  color:white;
+  cursor:not-allowed;
 }
-.num{
-    background:white;
-    color:black;
-    font-size:14px;
-    text-align:center;
-    padding:6px 0;
-    border-radius:6px;
-    font-weight:bold;
-    cursor:pointer;
-}
-.num.activo{background:gold}
-.num.bloqueado{opacity:0.3;pointer-events:none}
-.contador{text-align:center;font-size:12px;margin-top:4px}
+.numero.mio{background:gold}
 
-.logout{
-    display:block;
-    margin:12px auto;
-    padding:8px 16px;
-    background:#dc2626;
-    color:white;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
+.admin-panel{
+  max-width:900px;
+  margin:15px auto;
+  background:#020617;
+  border:2px solid gold;
+  border-radius:14px;
+  padding:10px;
 }
-</style> 
- </head> 
- <body> <!-- LOGIN --> 
-  <div class="login" id="login"> 
-   <h2>Ingreso al Sorteo</h2> 
-   <input id="user" placeholder="Usuario"> 
-   <input id="pass" type="password" placeholder="PIN"> <button onclick="login()">Ingresar</button> 
-  </div> <!-- APP --> 
-  <div id="app" class="hidden"> <!-- INFO USUARIO --> 
-   <div class="info"> <span>👤 Usuario: <b id="nombreUsuario"></b></span> <span>💰 Saldo: <span class="saldo" id="saldoUsuario"></span></span> 
-   </div> 
-   <div class="video-container"> 
-    <video id="video" autoplay playsinline></video> 
-   </div> 
-   <div class="cartones" id="cartones"></div> <button class="logout" onclick="logout()">Cerrar sesión</button> 
-  </div> 
-  <script>
-/* =====================================================
-   USUARIO FIJO DE EJEMPLO
-===================================================== */
-let usuarios = {
-    "ignacio":{
-        pass:"12345",
-        saldo: 15000,   // 👈 SALDO INICIAL
-        cartones:{1:[],2:[]}
-    }
+.admin-panel h3{text-align:center;color:gold}
+
+button{
+  padding:6px 10px;
+  border-radius:6px;
+  border:none;
+  cursor:pointer;
+}
+.confirmar{background:#22c55e}
+.liberar{background:#dc2626;color:white}
+.logout{background:#dc2626;color:white;margin:10px auto;display:block}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="login" id="login">
+  <h2>Ingreso Sorteo</h2>
+  <input id="user" placeholder="Usuario">
+  <input id="pass" type="password" placeholder="PIN">
+  <button onclick="login()">Ingresar</button>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+  <div class="info">
+    <span>👤 <b id="nombre"></b></span>
+    <span>💰 Saldo: $<b id="saldo"></b></span>
+    <span>Rol: <b id="rolTxt"></b></span>
+  </div>
+
+  <div class="video-container">
+    <video id="video" autoplay playsinline></video>
+  </div>
+
+  <div id="numerosGrid" class="numeros-grid"></div>
+
+  <!-- PANEL ADMIN -->
+  <div id="adminPanel" class="admin-panel hidden">
+    <h3>Panel Administrador</h3>
+    <div id="pendientes"></div>
+  </div>
+
+  <button class="logout" onclick="location.reload()">Cerrar sesión</button>
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// 🔥 CONFIG FIREBASE
+firebase.initializeApp({
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_DOMINIO",
+  databaseURL: "TU_DATABASE_URL",
+  projectId: "TU_PROJECT_ID"
+});
+const db = firebase.database();
+
+/* ======================
+   CONFIGURACIÓN
+====================== */
+const PRECIO = 1000;
+const TOTAL_NUMEROS = 300;
+
+/* ======================
+   USUARIOS
+====================== */
+const usuarios = {
+  ignacio:{ pass:"12345", rol:"admin", saldo:15000 },
+  juan:{ pass:"1111", rol:"user", saldo:5000 }
 };
-localStorage.setItem("usuarios", JSON.stringify(usuarios));
 
-/* =====================================================
+let usuarioActivo, rol;
+const numerosRef = db.ref("numeros");
+
+/* ======================
    LOGIN
-===================================================== */
+====================== */
 function login(){
-    const u = document.getElementById("user").value.trim();
-    const p = document.getElementById("pass").value.trim();
-    let users = JSON.parse(localStorage.getItem("usuarios"));
+  const u = user.value.trim();
+  const p = pass.value.trim();
 
-    if(!users[u]){ alert("Usuario no existe"); return; }
-    if(users[u].pass !== p){ alert("PIN incorrecto"); return; }
+  if(!usuarios[u] || usuarios[u].pass!==p){
+    alert("Credenciales incorrectas");
+    return;
+  }
 
-    localStorage.setItem("usuarioActivo", u);
-    iniciar(u);
+  usuarioActivo = u;
+  rol = usuarios[u].rol;
+
+  login.style.display="none";
+  app.classList.remove("hidden");
+
+  nombre.innerText = u;
+  saldo.innerText = usuarios[u].saldo;
+  rolTxt.innerText = rol;
+
+  crearNumeros();
+  escucharNumeros();
+
+  if(rol==="admin"){
+    adminPanel.classList.remove("hidden");
+    iniciarAdminCamara();
+  }else{
+    iniciarUsuarioCamara();
+  }
 }
 
-function logout(){
-    localStorage.removeItem("usuarioActivo");
-    location.reload();
-}
+/* ======================
+   VIDEO WEBRTC
+====================== */
+let pc;
+const sala="sorteo";
 
-function iniciar(u){
-    document.getElementById("login").style.display="none";
-    document.getElementById("app").classList.remove("hidden");
+function crearPC(){
+  pc = new RTCPeerConnection({
+    iceServers:[{urls:"stun:stun.l.google.com:19302"}]
+  });
 
-    let users = JSON.parse(localStorage.getItem("usuarios"));
-    document.getElementById("nombreUsuario").innerText = u;
-    document.getElementById("saldoUsuario").innerText = "$" + users[u].saldo;
-
-    iniciarCamara();
-    crearCartones(u);
-}
-
-/* =====================================================
-   CÁMARA REAL
-===================================================== */
-function iniciarCamara(){
-    navigator.mediaDevices.getUserMedia({
-        video:{facingMode:"environment"},
-        audio:false
-    }).then(stream=>{
-        document.getElementById("video").srcObject = stream;
-    }).catch(()=>alert("No se pudo acceder a la cámara"));
-}
-
-/* =====================================================
-   CARTONES
-===================================================== */
-const MAX = 8;
-
-function crearCartones(u){
-    const cont = document.getElementById("cartones");
-    cont.innerHTML="";
-    let users = JSON.parse(localStorage.getItem("usuarios"));
-    let datos = users[u].cartones;
-
-    for(let c=1;c<=2;c++){
-        const carton=document.createElement("div");
-        carton.className="carton";
-        carton.innerHTML=`<h4>Cartón ${c}</h4>`;
-
-        const numeros=document.createElement("div");
-        numeros.className="numeros";
-        const contador=document.createElement("div");
-        contador.className="contador";
-
-        function actualizar(){
-            contador.innerText=`Elegidos ${datos[c].length} / ${MAX}`;
-            numeros.querySelectorAll(".num").forEach(n=>{
-                let v=parseInt(n.innerText);
-                n.classList.toggle("activo", datos[c].includes(v));
-                n.classList.toggle("bloqueado",
-                    !datos[c].includes(v) && datos[c].length>=MAX);
-            });
-            localStorage.setItem("usuarios", JSON.stringify(users));
-        }
-
-        for(let i=1;i<=20;i++){
-            const n=document.createElement("div");
-            n.className="num";
-            n.innerText=i;
-            n.onclick=()=>{
-                if(datos[c].includes(i)){
-                    datos[c]=datos[c].filter(x=>x!==i);
-                }else{
-                    if(datos[c].length>=MAX) return;
-                    datos[c].push(i);
-                }
-                actualizar();
-            };
-            numeros.appendChild(n);
-        }
-
-        actualizar();
-        carton.appendChild(numeros);
-        carton.appendChild(contador);
-        cont.appendChild(carton);
+  pc.ontrack = e=>video.srcObject=e.streams[0];
+  pc.onicecandidate = e=>{
+    if(e.candidate){
+      db.ref("ice").push(JSON.stringify(e.candidate));
     }
+  };
 }
-</script> 
- 
-</body></html>
+
+async function iniciarAdminCamara(){
+  crearPC();
+  const stream = await navigator.mediaDevices.getUserMedia({video:true});
+  video.srcObject = stream;
+  stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  db.ref("offer").set(JSON.stringify(offer));
+
+  db.ref("answer").on("value", s=>{
+    if(s.exists()) pc.setRemoteDescription(JSON.parse(s.val()));
+  });
+
+  db.ref("ice").on("child_added", s=>{
+    pc.addIceCandidate(JSON.parse(s.val()));
+  });
+}
+
+function iniciarUsuarioCamara(){
+  crearPC();
+  db.ref("offer").on("value", async s=>{
+    if(!s.exists()) return;
+    await pc.setRemoteDescription(JSON.parse(s.val()));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    db.ref("answer").set(JSON.stringify(answer));
+  });
+
+  db.ref("ice").on("child_added", s=>{
+    pc.addIceCandidate(JSON.parse(s.val()));
+  });
+}
+
+/* ======================
+   NUMEROS
+====================== */
+function crearNumeros(){
+  numerosGrid.innerHTML="";
+  for(let i=1;i<=TOTAL_NUMEROS;i++){
+    const d=document.createElement("div");
+    d.className="numero";
+    d.innerText=i.toString().padStart(3,"0");
+    d.onclick=()=>comprarNumero(i);
+    numerosGrid.appendChild(d);
+  }
+}
+
+function comprarNumero(n){
+  if(rol==="admin") return;
+
+  numerosRef.child(n).once("value", s=>{
+    if(s.exists()) return alert("Número no disponible");
+    if(usuarios[usuarioActivo].saldo<PRECIO) return alert("Saldo insuficiente");
+
+    usuarios[usuarioActivo].saldo-=PRECIO;
+    saldo.innerText=usuarios[usuarioActivo].saldo;
+
+    numerosRef.child(n).set({
+      usuario:usuarioActivo,
+      estado:"pendiente",
+      fecha:Date.now()
+    });
+  });
+}
+
+function escucharNumeros(){
+  numerosRef.on("value", snap=>{
+    document.querySelectorAll(".numero").forEach(div=>{
+      const n=parseInt(div.innerText);
+      const d=snap.child(n).val();
+      div.className="numero";
+      if(!d) return;
+
+      if(d.estado==="pendiente") div.classList.add("pendiente");
+      if(d.estado==="confirmado"){
+        div.classList.add("bloqueado");
+        if(d.usuario===usuarioActivo) div.classList.add("mio");
+      }
+    });
+
+    if(rol==="admin") cargarPendientes(snap);
+  });
+}
+
+/* ======================
+   PANEL ADMIN
+====================== */
+function cargarPendientes(snap){
+  pendientes.innerHTML="";
+  snap.forEach(c=>{
+    const d=c.val();
+    if(d.estado==="pendiente"){
+      const div=document.createElement("div");
+      div.innerHTML=`
+        Nº ${c.key} - ${d.usuario}
+        <button class="confirmar" onclick="confirmar(${c.key})">Confirmar</button>
+        <button class="liberar" onclick="liberar(${c.key})">Liberar</button>
+      `;
+      pendientes.appendChild(div);
+    }
+  });
+}
+
+function confirmar(n){
+  numerosRef.child(n).update({estado:"confirmado"});
+}
+
+function liberar(n){
+  numerosRef.child(n).once("value", s=>{
+    if(!s.exists()) return;
+    const u=s.val().usuario;
+    usuarios[u].saldo+=PRECIO;
+    if(u===usuarioActivo) saldo.innerText=usuarios[u].saldo;
+    numerosRef.child(n).remove();
+  });
+}
+</script>
+
+</body>
+   </html>
